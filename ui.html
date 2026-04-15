@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --kw-dark: #0D1B3E;
+    --kw-blue: #1B4FDC;
+    --kw-accent: #4C6EF5;
+    --kw-light: #EEF3FF;
+    --error-red: #D32F2F;
+    --error-bg: #FFEBEE;
+    --warn-amber: #F57C00;
+    --warn-bg: #FFF8E1;
+    --pass-green: #2E7D32;
+    --pass-bg: #E8F5E9;
+    --text-dark: #1A1A2E;
+    --text-mid: #4A4A6A;
+    --border: #D0D7E8;
+  }
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    color: var(--text-dark);
+    background: #fff;
+    overflow-y: auto;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--kw-dark);
+    padding: 10px 14px;
+  }
+  .header-title { color: #fff; font-weight: 700; font-size: 13px; }
+  .header-version { color: #7B8DB8; font-size: 10px; }
+
+  /* Scope selector */
+  .scope-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--kw-light);
+    border-bottom: 1px solid var(--border);
+  }
+  .scope-label { font-weight: 600; font-size: 11px; color: var(--text-mid); }
+  .scope-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .scope-btn {
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    background: #fff;
+    color: var(--text-mid);
+    transition: all 0.15s;
+  }
+  .scope-btn.active {
+    background: var(--kw-blue);
+    color: #fff;
+  }
+  .scope-btn:not(.active):hover { background: #E8EDFA; }
+
+  /* Run button */
+  .run-section { padding: 10px 14px; }
+  .run-btn {
+    width: 100%;
+    padding: 10px 0;
+    background: var(--kw-blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .run-btn:hover { opacity: 0.9; }
+  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .spinner {
+    display: none;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .run-btn.loading .spinner { display: inline-block; }
+  .run-btn.loading .run-label { display: none; }
+  .run-btn.loading .loading-label { display: inline; }
+  .loading-label { display: none; }
+
+  /* Results */
+  #results { display: none; padding: 0 14px 10px; }
+
+  /* Summary bar */
+  .summary {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .summary.pass { background: var(--pass-bg); color: var(--pass-green); }
+  .summary.fail { background: var(--error-bg); color: var(--text-dark); display: flex; gap: 14px; }
+  .summary .err-count { color: var(--error-red); }
+  .summary .warn-count { color: var(--warn-amber); }
+
+  /* Rule groups */
+  .rule-group { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .rule-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: #F8F9FC;
+    cursor: pointer;
+    user-select: none;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+  .rule-group-header:hover { background: #EEF1F7; }
+  .rule-group-header .arrow { transition: transform 0.15s; font-size: 10px; color: var(--text-mid); }
+  .rule-group.collapsed .arrow { transform: rotate(-90deg); }
+  .rule-group.collapsed .rule-group-body { display: none; }
+  .rule-group-left { display: flex; align-items: center; gap: 8px; }
+  .rule-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fff;
+  }
+  .rule-badge.error { background: var(--error-red); }
+  .rule-badge.warning { background: var(--warn-amber); }
+
+  .fix-all-btn {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: none;
+    background: var(--kw-blue);
+    color: #fff;
+    cursor: pointer;
+  }
+  .fix-all-btn:hover { opacity: 0.85; }
+
+  .rule-group-body { border-top: 1px solid var(--border); }
+
+  /* Violation cards */
+  .violation {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .violation:last-child { border-bottom: none; }
+  .v-bar { width: 3px; min-height: 32px; border-radius: 2px; flex-shrink: 0; margin-top: 2px; }
+  .v-bar.error { background: var(--error-red); }
+  .v-bar.warning { background: var(--warn-amber); }
+  .v-content { flex: 1; min-width: 0; }
+  .v-message { font-weight: 600; font-size: 11px; color: var(--text-dark); word-break: break-word; }
+  .v-path { font-size: 10px; color: var(--text-mid); margin-top: 2px; word-break: break-word; }
+  .v-actions { display: flex; gap: 4px; flex-shrink: 0; margin-top: 2px; }
+  .btn-jump, .btn-fix {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-jump {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+  }
+  .btn-jump:hover { background: var(--kw-light); }
+  .btn-fix {
+    background: var(--kw-blue);
+    border: 1px solid var(--kw-blue);
+    color: #fff;
+  }
+  .btn-fix:hover { opacity: 0.85; }
+
+  /* Help toggle & panel */
+  .help-toggle {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--kw-accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+  }
+  .help-toggle:hover { text-decoration: underline; }
+  .help-panel {
+    margin-top: 6px;
+    background: #F8F9FC;
+    border-left: 2px solid var(--border);
+    padding: 6px 10px;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  .help-means { margin-bottom: 4px; }
+  .help-panel strong { color: var(--text-dark); }
+
+  /* Nudge box */
+  .nudge-box {
+    background: #EEF3FF;
+    border-left: 3px solid #4C6EF5;
+    padding: 8px 10px;
+    font-size: 10px;
+    color: #4A4A6A;
+    line-height: 1.5;
+  }
+
+  /* All-clear message */
+  .all-clear {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--pass-green);
+  }
+  .all-clear-icon { font-size: 28px; margin-bottom: 8px; }
+  .all-clear-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .all-clear-sub { font-size: 11px; color: var(--text-mid); line-height: 1.5; }
+
+  /* Manual checklist */
+  #checklist-section { display: none; padding: 0 14px 10px; }
+  .checklist-header { font-weight: 700; font-size: 12px; color: var(--text-dark); margin-bottom: 2px; }
+  .checklist-sub { font-size: 10px; color: var(--text-mid); margin-bottom: 8px; }
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dark);
+    line-height: 1.4;
+  }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-item input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--kw-blue);
+  }
+
+  /* Handoff */
+  #handoff-section { display: none; padding: 0 14px 10px; }
+  .handoff-btn {
+    width: 100%;
+    padding: 10px 0;
+    background: var(--pass-green);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .handoff-btn:hover { opacity: 0.9; }
+  .handoff-copied {
+    text-align: center;
+    color: var(--pass-green);
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: none;
+  }
+
+  /* Re-run */
+  #rerun-section { display: none; padding: 0 14px 14px; }
+  .rerun-btn {
+    width: 100%;
+    padding: 8px 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-weight: 600;
+    font-size: 11px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .rerun-btn:hover { background: var(--kw-light); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <span class="header-title">KW Preflight</span>
+  <span class="header-version">v1.0</span>
+</div>
+
+<!-- Scope selector -->
+<div class="scope-bar">
+  <span class="scope-label">Scan</span>
+  <div class="scope-toggle">
+    <button class="scope-btn active" data-scope="page">Current Page</button>
+    <button class="scope-btn" data-scope="all">All Pages</button>
+    <button class="scope-btn" data-scope="selection">Selection</button>
+  </div>
+</div>
+
+<!-- Run button -->
+<div class="run-section">
+  <button class="run-btn" id="runBtn">
+    <span class="spinner"></span>
+    <span class="run-label">Run Preflight</span>
+    <span class="loading-label">Scanning...</span>
+  </button>
+</div>
+
+<div id="scope-error" style="display:none; padding: 0 14px 8px;">
+  <div style="font-size:10px; color:#D32F2F; background:#FFEBEE; padding:6px 10px; border-radius:6px;">
+    No selection — select one or more frames in Figma first.
+  </div>
+</div>
+
+<!-- Results -->
+<div id="results">
+  <div id="summary" class="summary"></div>
+  <div id="violations-list"></div>
+</div>
+
+<!-- Manual checklist -->
+<div id="checklist-section">
+  <div class="checklist-header">Manual Sign-Off</div>
+  <div class="checklist-sub">Check these items yourself before marking ready</div>
+  <div id="checklist-items"></div>
+</div>
+
+<!-- Handoff -->
+<div id="handoff-section">
+  <button class="handoff-btn" id="handoffBtn">Copy Handoff Summary</button>
+  <div class="handoff-copied" id="handoffCopied">Copied to clipboard</div>
+</div>
+
+<!-- Re-run -->
+<div id="rerun-section">
+  <button class="rerun-btn" id="rerunBtn">Re-run Audit</button>
+</div>
+
+<script>
+  // ─── State ──────────────────────────────────────────────
+  var currentScope = 'page';
+  var auditResults = null;
+  var auditMeta = null;
+  var errorCount = 0;
+  var warningCount = 0;
+  var checklistState = [];
+
+  var CHECKLIST_ITEMS = [
+    'Animation references attached as sticky notes (Figma stickies with reference URLs for any section with motion or transitions)',
+    'Designer-to-developer comments added in Figma (Cmd/Ctrl+click comments placed directly on frames for layout edge cases, copy changes, asset substitutions)',
+    'Prototype links attached for interactive sections (tabs, accordions, carousels, modals \u2014 showing which state is default and what triggers what)',
+    'Third-party integrations flagged (maps, video embeds, forms \u2014 annotated with the specific service name)',
+    'Approved frame clearly marked (section frames for development have a clear naming convention, e.g. \u2705 prefix or _APPROVED suffix)',
+    'Real or representative copy used throughout (no Lorem Ipsum \u2014 all text reflects actual content length and tone)',
+    'Responsive exceptions noted (any section needing designer-specified mobile layout is annotated with exact mobile treatment)'
+  ];
+
+  var RULE_HELP = {
+    'RULE-01': {
+      means: 'You used Cmd+G to group layers. Groups have no layout intelligence \u2014 every element inside gets treated as floating at a fixed position when Claude Code reads this file.',
+      fix: 'Select the group \u2192 right-click \u2192 Frame Selection \u2192 then press Shift+A to add Auto Layout. Or click Fix to convert automatically.'
+    },
+    'RULE-02': {
+      means: 'This frame\'s children are manually positioned. Claude Code will output them as absolutely positioned elements that do not respond to screen size changes.',
+      fix: 'Select the frame \u2192 press Shift+A to add Auto Layout \u2192 set direction (horizontal or vertical) and gap in the right panel.'
+    },
+    'RULE-03': {
+      means: 'This layer still has Figma\'s auto-generated name. These names become CSS class names in generated code \u2014 meaningless names produce unmaintainable code.',
+      fix: 'Double-click the layer name in the left panel and give it a meaningful name: Hero Section, Card Title, CTA Button. Use Fix All to mark all unnamed layers so they\'re easy to spot in the layers panel, then use Rename Layers plugin for bulk renaming.'
+    },
+    'RULE-04': {
+      means: 'This text has font settings applied directly, not from your saved Text Styles. Claude Code hardcodes the values instead of using a design token \u2014 one font change won\'t update everywhere.',
+      fix: 'Select the text \u2192 go to the Text panel on the right \u2192 click the Style picker (four-dots icon) \u2192 apply the correct style: Heading 1, Body, Caption etc.'
+    },
+    'RULE-05': {
+      means: 'This element has a colour applied directly as a hex value, not from your saved Color Styles. Claude Code outputs it as a hardcoded hex instead of a CSS variable, breaking the token system.',
+      fix: 'Select the element \u2192 go to Fill in the right panel \u2192 click the style picker (four-dots icon) \u2192 apply the correct color style.'
+    },
+    'RULE-06': {
+      means: 'This image has no export settings configured. Claude Code will not know what format or resolution to use, producing broken image paths in the output.',
+      fix: 'Click Fix to automatically set 2x PNG export. Or select the element \u2192 go to Export in the right panel \u2192 click + \u2192 set format.'
+    },
+    'RULE-07': {
+      means: 'This layer is hidden in Figma but still exists in the file. It appears in the JSON that Claude Code reads, and can produce ghost elements or confuse the layout output.',
+      fix: 'Click Fix to delete it permanently. Or select it in the layers panel and press Delete. Only delete if it is not needed \u2014 there is no undo after the plugin deletes it.'
+    },
+    'RULE-08': {
+      means: 'This element has been manually set to ignore its parent\'s Auto Layout \u2014 it floats at a fixed position. Sometimes intentional (overlays, badges) but often a mistake.',
+      fix: 'If intentional: ignore this warning. If not: select the element \u2192 in the right panel under constraints \u2192 switch from Absolute to Auto.'
+    },
+    'RULE-09': {
+      means: 'There is no annotations layer in this file. Claude Code and the developer have no context for animations, hover states, interactions, or anything not visible in the static design.',
+      fix: 'Create a new frame \u2192 name it "\ud83d\udcdd Annotations" \u2192 place Figma sticky notes inside describing animations, hover states, third-party integrations, and any special developer instructions.'
+    },
+    'RULE-10': {
+      means: 'You have the same layout copied multiple times as separate frames instead of as a Component. Claude Code generates each one as unique code instead of a reusable component.',
+      fix: 'Select one of the repeated frames \u2192 right-click \u2192 Create Component (Opt+Cmd+K / Alt+Ctrl+K) \u2192 replace the other copies with instances of that component (hold Opt/Alt and drag).'
+    }
+  };
+
+  var showRule03Nudge = false;
+
+  // ─── Scope toggle ─────────────────────────────────────
+  var scopeBtns = document.querySelectorAll('.scope-btn');
+  for (var i = 0; i < scopeBtns.length; i++) {
+    scopeBtns[i].addEventListener('click', function() {
+      for (var j = 0; j < scopeBtns.length; j++) scopeBtns[j].classList.remove('active');
+      this.classList.add('active');
+      currentScope = this.getAttribute('data-scope');
+    });
+  }
+
+  // ─── Run button ───────────────────────────────────────
+  var runBtn = document.getElementById('runBtn');
+  runBtn.addEventListener('click', function() {
+    startScan();
+  });
+
+  document.getElementById('rerunBtn').addEventListener('click', function() {
+    startScan();
+  });
+
+  function startScan() {
+    showRule03Nudge = false;
+    runBtn.classList.add('loading');
+    runBtn.disabled = true;
+    document.getElementById('scope-error').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('checklist-section').style.display = 'none';
+    document.getElementById('handoff-section').style.display = 'none';
+    parent.postMessage({ pluginMessage: { type: 'RUN_AUDIT', scope: currentScope } }, '*');
+  }
+
+  // ─── Receive results ──────────────────────────────────
+  window.onmessage = function(event) {
+    var msg = event.data.pluginMessage;
+    if (!msg) return;
+    if (msg.type === 'AUDIT_RESULTS') {
+      runBtn.classList.remove('loading');
+      runBtn.disabled = false;
+      auditResults = msg.data;
+      auditMeta = msg.meta || {};
+      renderResults();
+    }
+    if (msg.type === 'EMPTY_SELECTION') {
+      runBtn.classList.remove('loading');
+      runBtn.disabled = false;
+      document.getElementById('scope-error').style.display = 'block';
+    }
+    if (msg.type === 'FIX_COMPLETE') {
+      removedFixedCards(msg.nodeIds);
+    }
+  };
+
+  // ─── Render ───────────────────────────────────────────
+  function renderResults() {
+    var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+    errorCount = 0;
+    warningCount = 0;
+    var totalViolations = 0;
+
+    for (var i = 0; i < auditResults.length; i++) {
+      var r = auditResults[i];
+      for (var j = 0; j < r.violations.length; j++) {
+        totalViolations++;
+        if (r.severity === 'ERROR') errorCount++;
+        else warningCount++;
+      }
+    }
+
+    // Summary
+    var summaryEl = document.getElementById('summary');
+    if (totalViolations === 0) {
+      summaryEl.className = 'summary pass';
+      summaryEl.innerHTML = '\u2705 All checks passed \u2014 ' + auditResults.length + ' rules checked';
+    } else {
+      summaryEl.className = 'summary fail';
+      summaryEl.innerHTML = '<span class="err-count">' + errorCount + ' Error' + (errorCount !== 1 ? 's' : '') + '</span>' +
+        '<span class="warn-count">' + warningCount + ' Warning' + (warningCount !== 1 ? 's' : '') + '</span>';
+    }
+
+    // Violations grouped by rule
+    var listEl = document.getElementById('violations-list');
+    listEl.innerHTML = '';
+
+    for (var i = 0; i < auditResults.length; i++) {
+      var rule = auditResults[i];
+      if (rule.violations.length === 0) continue;
+
+      var group = document.createElement('div');
+      group.className = 'rule-group';
+
+      var sevClass = rule.severity === 'ERROR' ? 'error' : 'warning';
+      var allFixable = true;
+      var fixableIds = [];
+      for (var j = 0; j < rule.violations.length; j++) {
+        if (rule.violations[j].autoFixable) fixableIds.push(rule.violations[j].nodeId);
+        else allFixable = false;
+      }
+      if (fixableIds.length === 0) allFixable = false;
+
+      // Header
+      var header = document.createElement('div');
+      header.className = 'rule-group-header';
+      var leftHtml = '<div class="rule-group-left">' +
+        '<span class="arrow">\u25BC</span>' +
+        '<span class="rule-badge ' + sevClass + '">' + rule.ruleId + '</span>' +
+        '<span>' + rule.ruleName + ' (' + rule.violations.length + ')</span>' +
+        '</div>';
+      header.innerHTML = leftHtml;
+
+      if (allFixable && fixableIds.length > 0) {
+        var fixAllBtn = document.createElement('button');
+        fixAllBtn.className = 'fix-all-btn';
+        fixAllBtn.textContent = 'Fix All (' + fixableIds.length + ')';
+        fixAllBtn.setAttribute('data-rule', rule.ruleId);
+        fixAllBtn.setAttribute('data-ids', JSON.stringify(fixableIds));
+        fixAllBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var ruleId = this.getAttribute('data-rule');
+          var ids = JSON.parse(this.getAttribute('data-ids'));
+          handleFixAll(ruleId, ids);
+        });
+        header.appendChild(fixAllBtn);
+      }
+
+      header.addEventListener('click', function() {
+        this.parentElement.classList.toggle('collapsed');
+      });
+      group.appendChild(header);
+
+      // Body
+      var body = document.createElement('div');
+      body.className = 'rule-group-body';
+      for (var j = 0; j < rule.violations.length; j++) {
+        var v = rule.violations[j];
+        var card = document.createElement('div');
+        card.className = 'violation';
+
+        var barHtml = '<div class="v-bar ' + sevClass + '"></div>';
+
+        // Help toggle + panel
+        var helpToggle = '<button class="help-toggle" data-rule="' + rule.ruleId + '">What is this? \u25BE</button>';
+        var helpContent = RULE_HELP[rule.ruleId];
+        var helpPanel = '';
+        if (helpContent) {
+          helpPanel = '<div class="help-panel" style="display:none">' +
+            '<div class="help-means"><strong>Means:</strong> ' + escapeHtml(helpContent.means) + '</div>' +
+            '<div class="help-fix"><strong>Fix:</strong> ' + escapeHtml(helpContent.fix) + '</div>' +
+            '</div>';
+        }
+
+        var contentHtml = '<div class="v-content">' +
+          '<div class="v-message">' + escapeHtml(v.message) + '</div>' +
+          (v.layerPath ? '<div class="v-path">' + escapeHtml(v.layerPath) + '</div>' : '') +
+          helpToggle + helpPanel +
+          '</div>';
+
+        var actionsHtml = '<div class="v-actions">';
+        if (v.nodeId) {
+          actionsHtml += '<button class="btn-jump" data-node="' + escapeHtml(v.nodeId) + '">Jump To</button>';
+        }
+        if (v.autoFixable && v.nodeId) {
+          actionsHtml += '<button class="btn-fix" data-node="' + escapeHtml(v.nodeId) + '" data-rule="' + rule.ruleId + '">Fix</button>';
+        }
+        actionsHtml += '</div>';
+
+        card.innerHTML = barHtml + contentHtml + actionsHtml;
+        body.appendChild(card);
+      }
+      group.appendChild(body);
+
+      // RULE-03 nudge box (shown only after Fix All triggered)
+      if (rule.ruleId === 'RULE-03' && showRule03Nudge) {
+        var nudge = document.createElement('div');
+        nudge.className = 'nudge-box';
+        nudge.innerHTML = '\ud83d\udca1 For bulk renaming, use the <strong>Rename Layers</strong> plugin in Figma Community.<br>' +
+          'It lets you find/replace, add prefixes, and number layers in one step.<br>' +
+          'Search "Rename Layers" in Figma \u2192 Plugins \u2192 Community.';
+        group.appendChild(nudge);
+      }
+
+      listEl.appendChild(group);
+    }
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('rerun-section').style.display = 'block';
+
+    // Checklist — save state, rebuild, restore
+    saveChecklistState();
+    renderChecklist();
+    restoreChecklistState();
+    document.getElementById('checklist-section').style.display = 'block';
+
+    updateHandoff();
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        document.documentElement.scrollTop = scrollTop;
+        document.body.scrollTop = scrollTop;
+      });
+    });
+  }
+
+  function handleFix(ruleId, nodeIds) {
+    var msgType = '';
+    if (ruleId === 'RULE-01') msgType = 'FIX_GROUPS';
+    else if (ruleId === 'RULE-03') {
+      showRule03Nudge = true;
+      msgType = 'FIX_DEFAULT_NAMES';
+    }
+    else if (ruleId === 'RULE-06') msgType = 'FIX_EXPORT';
+    else if (ruleId === 'RULE-07') {
+      if (!confirm('This will permanently delete ' + nodeIds.length + ' hidden layer(s). Continue?')) return;
+      msgType = 'FIX_HIDDEN';
+    }
+    if (msgType) {
+      parent.postMessage({ pluginMessage: { type: msgType, nodeIds: nodeIds } }, '*');
+    }
+  }
+
+  function handleFixAll(ruleId, nodeIds) {
+    if (ruleId === 'RULE-07') {
+      if (!confirm('This will permanently delete ' + nodeIds.length + ' hidden layer(s). Continue?')) return;
+    }
+    handleFix(ruleId, nodeIds);
+  }
+
+  // ─── Checklist ────────────────────────────────────────
+  function saveChecklistState() {
+    var checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
+    checklistState = [];
+    for (var i = 0; i < checkboxes.length; i++) {
+      checklistState.push(checkboxes[i].checked);
+    }
+  }
+
+  function restoreChecklistState() {
+    var checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
+    for (var i = 0; i < checkboxes.length && i < checklistState.length; i++) {
+      checkboxes[i].checked = checklistState[i];
+    }
+  }
+
+  function renderChecklist() {
+    var container = document.getElementById('checklist-items');
+    container.innerHTML = '';
+    for (var i = 0; i < CHECKLIST_ITEMS.length; i++) {
+      var item = document.createElement('label');
+      item.className = 'checklist-item';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.addEventListener('change', updateHandoff);
+      var span = document.createElement('span');
+      span.textContent = CHECKLIST_ITEMS[i];
+      item.appendChild(cb);
+      item.appendChild(span);
+      container.appendChild(item);
+    }
+  }
+
+  // ─── Handoff ──────────────────────────────────────────
+  function updateHandoff() {
+    var checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
+    var allChecked = true;
+    for (var i = 0; i < checkboxes.length; i++) {
+      if (!checkboxes[i].checked) { allChecked = false; break; }
+    }
+
+    var handoffSection = document.getElementById('handoff-section');
+    if (errorCount === 0 && allChecked && auditResults) {
+      handoffSection.style.display = 'block';
+    } else {
+      handoffSection.style.display = 'none';
+    }
+  }
+
+  document.getElementById('handoffBtn').addEventListener('click', function() {
+    var now = new Date();
+    var date = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    var text = '\u2705 KW Preflight \u2014 PASSED\n' +
+      'File: ' + (auditMeta.fileName || 'Unknown') + '\n' +
+      'Page: ' + (auditMeta.pageName || 'Unknown') + '\n' +
+      'Date: ' + date + '\n' +
+      'Checked by: ' + (auditMeta.userName || 'Unknown') + '\n' +
+      'Rules passed: 10/10\n' +
+      'Manual sign-off: Complete\n' +
+      'Ready for development.';
+
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+
+    var copiedEl = document.getElementById('handoffCopied');
+    copiedEl.style.display = 'block';
+    setTimeout(function() { copiedEl.style.display = 'none'; }, 2000);
+  });
+
+  // ─── Delegation listener (once at page load) ──────────
+  document.getElementById('violations-list').addEventListener('click', function(e) {
+    var target = e.target;
+    if (target.classList.contains('btn-jump')) {
+      parent.postMessage({ pluginMessage: { type: 'FOCUS_NODE', nodeId: target.getAttribute('data-node') } }, '*');
+    }
+    if (target.classList.contains('btn-fix')) {
+      var nodeId = target.getAttribute('data-node');
+      var ruleId = target.getAttribute('data-rule');
+      handleFix(ruleId, [nodeId]);
+    }
+    if (target.classList.contains('help-toggle')) {
+      var card = target.closest('.violation');
+      var panel = card.querySelector('.help-panel');
+      var isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      target.textContent = isOpen ? 'What is this? \u25BE' : 'What is this? \u25B4';
+    }
+  });
+
+  // ─── Surgical DOM update after fix ────────────────────
+  function removedFixedCards(nodeIds) {
+    var idSet = {};
+    for (var i = 0; i < nodeIds.length; i++) idSet[nodeIds[i]] = true;
+
+    // Remove violation cards whose data-node is in the fixed set
+    var cards = document.querySelectorAll('.violation');
+    for (var i = 0; i < cards.length; i++) {
+      var jumpBtn = cards[i].querySelector('.btn-jump');
+      if (jumpBtn && idSet[jumpBtn.getAttribute('data-node')]) {
+        cards[i].parentNode.removeChild(cards[i]);
+      }
+    }
+
+    // For each rule group, update the count in the header or remove
+    // the group entirely if no violations remain
+    var groups = document.querySelectorAll('.rule-group');
+    for (var i = 0; i < groups.length; i++) {
+      var remaining = groups[i].querySelectorAll('.violation').length;
+      if (remaining === 0) {
+        groups[i].parentNode.removeChild(groups[i]);
+      } else {
+        // Update the count label in the header
+        var label = groups[i].querySelector('.rule-group-left span:last-child');
+        if (label) {
+          var text = label.textContent;
+          label.textContent = text.replace(/\(\d+\)/, '(' + remaining + ')');
+        }
+        // Update Fix All button count
+        var fixAllBtn = groups[i].querySelector('.fix-all-btn');
+        if (fixAllBtn) {
+          fixAllBtn.textContent = 'Fix All (' + remaining + ')';
+          fixAllBtn.setAttribute('data-ids',
+            JSON.stringify(
+              Array.prototype.slice.call(
+                groups[i].querySelectorAll('.btn-fix')
+              ).map(function(b) { return b.getAttribute('data-node'); })
+            )
+          );
+        }
+      }
+    }
+
+    // Recount errors and warnings from remaining badges
+    errorCount = 0;
+    warningCount = 0;
+    document.querySelectorAll('.rule-group').forEach(function(g) {
+      var badge = g.querySelector('.rule-badge');
+      var vCount = g.querySelectorAll('.violation').length;
+      if (badge && badge.classList.contains('error')) errorCount += vCount;
+      else if (badge) warningCount += vCount;
+    });
+
+    // Update summary bar
+    var summaryEl = document.getElementById('summary');
+    var total = errorCount + warningCount;
+    if (total === 0) {
+      summaryEl.className = 'summary pass';
+      summaryEl.innerHTML = '\u2705 All checks passed \u2014 10 rules checked';
+    } else {
+      summaryEl.className = 'summary fail';
+      summaryEl.innerHTML =
+        '<span class="err-count">' + errorCount + ' Error' + (errorCount !== 1 ? 's' : '') + '</span>' +
+        '<span class="warn-count">' + warningCount + ' Warning' + (warningCount !== 1 ? 's' : '') + '</span>';
+    }
+
+    // Show all-clear message if no violations remain
+    var remainingGroups = document.querySelectorAll('.rule-group').length;
+    if (remainingGroups === 0) {
+      var listEl = document.getElementById('violations-list');
+      listEl.innerHTML = '<div class="all-clear">' +
+        '<div class="all-clear-icon">\u2705</div>' +
+        '<div class="all-clear-title">All automated checks passed</div>' +
+        '<div class="all-clear-sub">Complete the manual sign-off below to unlock your handoff summary.</div>' +
+        '</div>';
+    }
+
+    updateHandoff();
+  }
+
+  // ─── Helpers ──────────────────────────────────────────
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>
