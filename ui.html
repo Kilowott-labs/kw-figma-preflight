@@ -411,8 +411,8 @@
       fix: 'Click Fix to delete it permanently. Or select it in the layers panel and press Delete. Only delete if it is not needed \u2014 there is no undo after the plugin deletes it.'
     },
     'RULE-08': {
-      means: 'This element has been manually set to ignore its parent\'s Auto Layout \u2014 it floats at a fixed position. Sometimes intentional (overlays, badges) but often a mistake.',
-      fix: 'If intentional: ignore this warning. If not: select the element \u2192 in the right panel under constraints \u2192 switch from Absolute to Auto.'
+      means: 'This element is set to absolute position inside an Auto Layout frame \u2014 it floats at a fixed position and ignores the layout flow. This is sometimes intentional (hero overlays, background layers, badges) but often a mistake from manual positioning.',
+      fix: 'If intentional: rename the layer to start with "bg-", "overlay-", "abs-", or "badge-" to mark it as deliberate and suppress this warning. If not intentional: select the element \u2192 right panel \u2192 switch from Absolute to Auto.'
     },
     'RULE-09': {
       means: 'There is no annotations layer in this file. Claude Code and the developer have no context for animations, hover states, interactions, or anything not visible in the static design.',

@@ -61,11 +61,38 @@ function ruleGroups(nodes) {
   return { ruleId: 'RULE-01', ruleName: 'Groups Must Not Exist', severity: 'ERROR', violations: violations };
 }
 
+function isIconFrame(n) {
+  var iconPattern = /icon|ico|svg|logo/i;
+  if (iconPattern.test(n.name)) return true;
+  if (n.width <= 64 && n.height <= 64) {
+    var hasText = false;
+    if ('children' in n) {
+      for (var k = 0; k < n.children.length; k++) {
+        if (n.children[k].type === 'TEXT') { hasText = true; break; }
+      }
+    }
+    if (!hasText) return true;
+  }
+  if ('children' in n && n.children.length > 0) {
+    var allVectors = true;
+    for (var k = 0; k < n.children.length; k++) {
+      var t = n.children[k].type;
+      if (t !== 'VECTOR' && t !== 'BOOLEAN_OPERATION' && t !== 'STAR' && t !== 'ELLIPSE' && t !== 'POLYGON') {
+        allVectors = false; break;
+      }
+    }
+    if (allVectors) return true;
+  }
+  return false;
+}
+
 function ruleAutoLayout(nodes) {
   var violations = [];
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
-    if (n.type === 'FRAME' && n.layoutMode === 'NONE' && (!n.parent || (n.parent.type !== 'COMPONENT' && n.parent.type !== 'INSTANCE'))) {
+    if (n.type === 'FRAME' && n.layoutMode === 'NONE' &&
+      (!n.parent || (n.parent.type !== 'COMPONENT' && n.parent.type !== 'INSTANCE')) &&
+      !isIconFrame(n)) {
       violations.push({
         nodeId: n.id,
         nodeName: n.name,
@@ -186,10 +213,15 @@ function ruleHiddenLayers(nodes) {
 }
 
 function ruleAbsolutePositioning(nodes) {
+  var intentionalPattern = /^(abs-|overlay-|bg-|background|decor|badge)/i;
   var violations = [];
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
-    if (n.parent && n.parent.type === 'FRAME' && n.parent.layoutMode !== 'NONE' && n.layoutPositioning === 'ABSOLUTE') {
+    if (n.parent &&
+      n.parent.type === 'FRAME' &&
+      n.parent.layoutMode !== 'NONE' &&
+      n.layoutPositioning === 'ABSOLUTE' &&
+      !intentionalPattern.test(n.name)) {
       violations.push({
         nodeId: n.id,
         nodeName: n.name,
